@@ -75,6 +75,19 @@ function delta(proposed, current) {
 
 export default function PricingComparison() {
   const [view, setView] = useState("proposed");
+  const [proposed, setProposed] = useState(() =>
+    plans.map(cat =>
+      cat.items.map(item => ({ three: item.proposed.three, six: item.proposed.six }))
+    )
+  );
+
+  function updateProposed(catIdx, itemIdx, field, value) {
+    setProposed(prev => {
+      const next = prev.map(cat => cat.map(item => ({ ...item })));
+      next[catIdx][itemIdx][field] = Number(value) || 0;
+      return next;
+    });
+  }
 
   return (
     <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", background: "#F8FAFC", minHeight: "100vh", padding: "32px 24px" }}>
@@ -121,7 +134,9 @@ export default function PricingComparison() {
               {cat.category}
             </h2>
 
-            {cat.items.map((plan, pi) => (
+            {cat.items.map((plan, pi) => {
+              const prop = proposed[ci][pi];
+              return (
               <div
                 key={pi}
                 style={{
@@ -143,9 +158,9 @@ export default function PricingComparison() {
                 {view === "proposed" && (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
                     {[
-                      { label: "1 Month", price: plan.base, mo: plan.base, disc: 0 },
-                      { label: "3 Months", price: plan.proposed.three, mo: monthly(plan.proposed.three, 3), disc: pct(plan.base, plan.proposed.three, 3) },
-                      { label: "6 Months", price: plan.proposed.six, mo: monthly(plan.proposed.six, 6), disc: pct(plan.base, plan.proposed.six, 6) },
+                      { label: "1 Month", price: plan.base, mo: plan.base, disc: 0, field: null },
+                      { label: "3 Months", price: prop.three, mo: monthly(prop.three, 3), disc: pct(plan.base, prop.three, 3), field: "three" },
+                      { label: "6 Months", price: prop.six, mo: monthly(prop.six, 6), disc: pct(plan.base, prop.six, 6), field: "six" },
                     ].map((col, i) => (
                       <div
                         key={i}
@@ -158,9 +173,26 @@ export default function PricingComparison() {
                         <div style={{ fontSize: 11, fontWeight: 600, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
                           {col.label}
                         </div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em" }}>
-                          ${col.price.toLocaleString()}
-                        </div>
+                        {col.field ? (
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                            <span style={{ fontSize: 24, fontWeight: 800, color: "#0F172A" }}>$</span>
+                            <input
+                              type="number"
+                              value={col.price}
+                              onChange={e => updateProposed(ci, pi, col.field, e.target.value)}
+                              style={{
+                                fontSize: 24, fontWeight: 800, color: "#0F172A",
+                                border: "none", borderBottom: "2px solid #CBD5E1",
+                                background: "transparent", textAlign: "center",
+                                width: 90, outline: "none", letterSpacing: "-0.02em",
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em" }}>
+                            ${col.price.toLocaleString()}
+                          </div>
+                        )}
                         <div style={{ fontSize: 13, color: "#64748B", marginTop: 4 }}>
                           ${col.mo}/mo
                         </div>
@@ -199,16 +231,16 @@ export default function PricingComparison() {
                           {
                             period: "3 Months",
                             cur: plan.current.three,
-                            prop: plan.proposed.three,
+                            prop: prop.three,
                             curDisc: pct(plan.base, plan.current.three, 3),
-                            propDisc: pct(plan.base, plan.proposed.three, 3),
+                            propDisc: pct(plan.base, prop.three, 3),
                           },
                           {
                             period: "6 Months",
                             cur: plan.current.six,
-                            prop: plan.proposed.six,
+                            prop: prop.six,
                             curDisc: pct(plan.base, plan.current.six, 6),
-                            propDisc: pct(plan.base, plan.proposed.six, 6),
+                            propDisc: pct(plan.base, prop.six, 6),
                           },
                         ].map((row, ri) => (
                           <tr key={ri} style={{ borderBottom: "1px solid #F1F5F9" }}>
@@ -254,8 +286,8 @@ export default function PricingComparison() {
                       </thead>
                       <tbody>
                         {[
-                          { period: "3-Month", d: delta(plan.proposed.three, plan.current.three) },
-                          { period: "6-Month", d: delta(plan.proposed.six, plan.current.six) },
+                          { period: "3-Month", d: delta(prop.three, plan.current.three) },
+                          { period: "6-Month", d: delta(prop.six, plan.current.six) },
                         ].map((row, ri) => (
                           <tr key={ri} style={{ borderBottom: "1px solid #F1F5F9" }}>
                             <td style={{ padding: "10px 8px", fontWeight: 600, color: "#334155" }}>{row.period}</td>
@@ -275,7 +307,8 @@ export default function PricingComparison() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         ))}
 
